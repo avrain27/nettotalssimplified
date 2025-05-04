@@ -1,27 +1,39 @@
-/* For all elements */
-.forall {
+/* Container with right-aligned content and fixed margins */
+.right-aligned-container {
     text-align: right;
     margin: 0 8px;
     min-width: 6.5em;
 }
 
-/* Font change on middle click*/
+/* Font size classes with consistent scaling */
 .size-0 {
-    font-size: 1em;
+    font-size: 1em;    /* Base size */
 }
 
 .size-1 {
-    font-size: .65em;
+    font-size: 0.8em;  /* Slightly smaller */
 }
 
 .size-2 {
-    font-size: .7em;
+    font-size: 0.9em;  /* Intermediate */
 }
 
 .size-3 {
-    font-size: .9em;
+    font-size: 1em;    /* Base size */
 }
 
 .size-4 {
-    font-size: 1.1em;
+    font-size: 1.1em;  /* Slightly larger */
+}
+
+/* Icon sizing for net totals */
+.net-totals-icon {
+    icon-size: 16px;
+}
+
+/* HiDPI scaling for high-resolution displays */
+@media (min-resolution: 120dpi) {
+    .net-totals-icon {
+        icon-size: 24px;
+    }
 }

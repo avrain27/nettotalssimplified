@@ -55,11 +55,5 @@
         <summary>Lock reset function</summary>
         <description>Prevent right-click from resetting the total count</description>
       </key>
-      
-      <!-- <key name="restartextension" type="b">
-        <default>false</default>
-        <summary>Internal restart flag</summary>
-        <description>Used internally to trigger extension restart</description>
-      </key> -->
   </schema>
 </schemalist>

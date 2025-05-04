@@ -1,4 +1,3 @@
-// Imports
 import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 import Gio from 'gi://Gio';
@@ -7,30 +6,25 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-const schema = 'org.gnome.shell.extensions.nettotalssimplified',
-    ButtonName = "NetTotalsButton";
+const ButtonName = "NetTotalsButton";
 
 export default class NetTotalsSimplifiedExtension extends Extension {
     constructor(metadata) {
         super(metadata);
-        // Initialize all properties
         this.settings = null;
         this.timeout = null;
         this.lastCount = 0;
         this.resetCount = 0;
         this.currentSettings = null;
-        
+
         this.tsLabel = null;
-        this.tsIcon = null;
         this.nsButton = null;
         this.nsActor = null;
-        this.nsLayout = null;
-        
+
         this._buttonSignalId = null;
         this._settingsSignals = [];
     }
 
-    // Safe destroy method with error handling
     safeDestroy(obj) {
         try {
             if (obj && !obj.is_destroyed && typeof obj.destroy === 'function') {
@@ -56,49 +50,38 @@ export default class NetTotalsSimplifiedExtension extends Extension {
     }
 
     updateStyles() {
-        // Destroy old elements
-        this.tsLabel = this.safeDestroy(this.tsLabel);
-        this.tsIcon = this.safeDestroy(this.tsIcon);
+        if (!this.tsLabel || this.tsLabel.is_destroyed) {
+            return;
+        }
 
-        // Create new elements with current settings
-        let extraInfo = this.currentSettings.cusFont ? `font-family: ${this.currentSettings.cusFont}; ` : "";
-        let extraLabelInfo = `${extraInfo}min-width: ${this.currentSettings.minWidth}em; `;
-        extraLabelInfo += `text-align: ${["left", "right", "center"][this.currentSettings.textAlign]}; `;
+        // Ensure label has been allocated before styling
+        if (!this.tsLabel.allocation) {
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => this.updateStyles());
+            return GLib.SOURCE_REMOVE;
+        }
 
-        this.tsLabel = new St.Label({
-            text: '--',
-            y_align: Clutter.ActorAlign.CENTER,
-            style_class: `forall size-${this.currentSettings.fontmode}`,
-            style: `${extraLabelInfo}${this.currentSettings.systemColr ? "" : `color: ${this.currentSettings.tsColor}`}`
-        });
+        try {
+            let extraInfo = this.currentSettings.cusFont ? `font-family: ${this.currentSettings.cusFont}; ` : "";
+            let extraLabelInfo = `${extraInfo}min-width: ${this.currentSettings.minWidth}em; `;
+            extraLabelInfo += `text-align: ${["left", "right", "center"][this.currentSettings.textAlign]}; `;
 
-        this.tsIcon = new St.Label({
-            text: "Σ",
-            y_align: Clutter.ActorAlign.CENTER,
-            style_class: `size-${this.currentSettings.fontmode}`,
-            style: `${extraInfo}${this.currentSettings.systemColr ? "" : `color: ${this.currentSettings.tsColor}`}`
-        });
-
-        // Reattach to layout if it exists
-        if (this.nsLayout && this.nsActor && !this.nsActor.is_destroyed) {
-            this.nsActor.remove_all_children();
-            this.nsLayout.attach(this.tsIcon, 0, 0, 1, 1);
-            this.nsLayout.attach(this.tsLabel, 1, 0, 1, 1);
+            this.tsLabel.set_style(`${extraLabelInfo}${this.currentSettings.systemColr ? "" : `color: ${this.currentSettings.tsColor}`}`);
+            this.tsLabel.style_class = `forall size-${this.currentSettings.fontmode}`;
+        } catch (e) {
+            console.error('Error in updateStyles:', e);
         }
     }
 
     updateMouseHandler() {
         if (this.nsButton) {
-            // Disconnect previous handler if exists
             if (this._buttonSignalId) {
                 this.nsButton.disconnect(this._buttonSignalId);
                 this._buttonSignalId = null;
             }
-            
-            // Connect new handler if not locked
+
             if (!this.currentSettings.lockMouse) {
                 this._buttonSignalId = this.nsButton.connect(
-                    'button-press-event', 
+                    'button-press-event',
                     (widget, event) => {
                         if (event.get_button() === 3) { // Right click
                             this.resetCount = this.lastCount;
@@ -112,45 +95,71 @@ export default class NetTotalsSimplifiedExtension extends Extension {
 
     updateLabel(text) {
         if (this.tsLabel && !this.tsLabel.is_destroyed) {
-            this.tsLabel.set_text(text);
+            // Keep the sum symbol prefix while updating the value
+            this.tsLabel.set_text(`Σ ${text.trim()}`);
         }
     }
 
     createUI() {
-        // Clean up any existing UI
         this.destroyUI();
-
-        // Create layout
-        this.nsLayout = new Clutter.GridLayout();
-        this.nsActor = new Clutter.Actor({
-            layout_manager: this.nsLayout,
-            y_align: Clutter.ActorAlign.CENTER
+    
+        this.nsButton = new PanelMenu.Button(0.0, ButtonName, false);
+        this.nsButton.reactive = true;
+        this.nsButton.can_focus = false;
+    
+        // Create label with sum symbol prefix
+        this.tsLabel = new St.Label({
+            text: 'Σ --',  // Initial text with sum symbol
+            y_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+            y_expand: false
         });
-
-        // Create and attach labels
-        this.updateStyles();
-
-        // Create button
-        this.nsButton = new PanelMenu.Button(0.0, ButtonName);
-        this.updateMouseHandler();
-        this.nsButton.add_child(this.nsActor);
+    
+        this.nsButton.add_child(this.tsLabel);
         Main.panel.addToStatusArea(ButtonName, this.nsButton, 0, "right");
+    
+        // Delay styling until allocation is ready
+        GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            if (!this.tsLabel || !this.tsLabel.allocation) {
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => this.updateStyles());
+            } else {
+                this.updateStyles();
+            }
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     destroyUI() {
-        if (this.nsButton) {
-            if (this._buttonSignalId) {
-                this.nsButton.disconnect(this._buttonSignalId);
-                this._buttonSignalId = null;
+        // Disconnect signals first
+        if (this._buttonSignalId && this.nsButton) {
+            this.nsButton.disconnect(this._buttonSignalId);
+            this._buttonSignalId = null;
+        }
+    
+        // Remove from panel status area if it exists
+        if (Main.panel.statusArea[ButtonName]) {
+            try {
+                Main.panel.statusArea[ButtonName].remove_child(this.nsButton);
+            } catch (e) {
+                console.debug('Error removing button from panel:', e);
             }
-            this.nsButton.destroy();
+        }
+    
+        // Destroy children first
+        this.tsLabel = this.safeDestroy(this.tsLabel);
+    
+        // Then destroy the button
+        if (this.nsButton) {
+            try {
+                // Ensure we're not trying to remove the button from itself
+                if (!this.nsButton.is_destroyed) {
+                    this.nsButton.destroy();
+                }
+            } catch (e) {
+                console.debug('Error destroying button:', e);
+            }
             this.nsButton = null;
         }
-        
-        this.tsLabel = this.safeDestroy(this.tsLabel);
-        this.tsIcon = this.safeDestroy(this.tsIcon);
-        this.nsActor = this.safeDestroy(this.nsActor);
-        this.nsLayout = null;
     }
 
     parseStat() {
@@ -159,13 +168,13 @@ export default class NetTotalsSimplifiedExtension extends Extension {
             let [, contents] = input_file.load_contents(null);
             contents = new TextDecoder().decode(contents);
             let lines = contents.split('\n');
-
+    
             let count = 0;
             for (let i = 0; i < lines.length; i++) {
                 let line = lines[i].trim();
                 let fields = line.split(/\W+/);
                 if (fields.length <= 2) continue;
-
+    
                 if (fields[0] != "lo" &&
                     !fields[0].match(/^ifb[0-9]+/) &&
                     !fields[0].match(/^veth[0-9a-zA-Z]+/) &&
@@ -173,16 +182,17 @@ export default class NetTotalsSimplifiedExtension extends Extension {
                     count += parseInt(fields[1]) + parseInt(fields[9]);
                 }
             }
-
+    
             if (this.lastCount === 0) this.lastCount = count;
-            let total = " " + this.formatBytes(count - this.resetCount);
-            
+            let total = this.formatBytes(count - this.resetCount);
+    
+            // Update label with sum symbol
             this.updateLabel(total);
             this.lastCount = count;
-
+    
         } catch (e) {
             console.error('Error in parseStat:', e);
-            return true; // Keep the timeout running
+            return true;
         }
         return true;
     }
@@ -199,10 +209,8 @@ export default class NetTotalsSimplifiedExtension extends Extension {
     }
 
     handleSettingsChange() {
-        // Get fresh settings
         this.fetchSettings();
-        
-        // Update refresh rate if changed
+
         if (this.timeout) {
             GLib.source_remove(this.timeout);
             this.timeout = GLib.timeout_add_seconds(
@@ -211,28 +219,30 @@ export default class NetTotalsSimplifiedExtension extends Extension {
                 () => this.parseStat()
             );
         }
-        
-        // Update styles
-        this.updateStyles();
-        
-        // Update mouse handler
+
+        // Delay styling after settings change as well
+        GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            if (!this.tsLabel || !this.tsLabel.allocation) {
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => this.updateStyles());
+            } else {
+                this.updateStyles();
+            }
+            return GLib.SOURCE_REMOVE;
+        });
+
         this.updateMouseHandler();
-        
-        // Force immediate update
         this.parseStat();
     }
 
     enable() {
         this.settings = this.getSettings();
-        
-        // Connect settings change handlers
+        this.fetchSettings();
+        this.createUI();
+
         this._settingsSignals = [
             this.settings.connect('changed', () => this.handleSettingsChange())
         ];
-        
-        // Initial setup
-        this.fetchSettings();
-        this.createUI();
+
         this.timeout = GLib.timeout_add_seconds(
             GLib.PRIORITY_DEFAULT,
             this.currentSettings.refreshTime,
@@ -241,24 +251,27 @@ export default class NetTotalsSimplifiedExtension extends Extension {
     }
 
     disable() {
-        // Disconnect all signals
-        this._settingsSignals.forEach(id => this.settings.disconnect(id));
+        // Disconnect settings signals
+        this._settingsSignals.forEach(id => {
+            try {
+                if (this.settings) {
+                    this.settings.disconnect(id);
+                }
+            } catch (e) {
+                console.debug('Error disconnecting setting signal:', e);
+            }
+        });
         this._settingsSignals = [];
-        
-        if (this._buttonSignalId && this.nsButton) {
-            this.nsButton.disconnect(this._buttonSignalId);
-            this._buttonSignalId = null;
-        }
-        
+    
         // Remove timeout
         if (this.timeout) {
             GLib.source_remove(this.timeout);
             this.timeout = null;
         }
-        
+    
         // Clean up UI
         this.destroyUI();
-        
+    
         // Clear references
         this.settings = null;
         this.currentSettings = null;
