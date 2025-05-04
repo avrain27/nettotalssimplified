@@ -64,6 +64,11 @@ journalctl -f -o cat /usr/bin/gnome-shell
 ```
 2. Restart GNOME Shell (Alt+F2, then type 'r')
 
+## Support This Project
+If you find this extension useful, consider supporting development:
+- [Patreon](https://patreon.com/avrain27)
+- [PayPal](https://paypal.me/avrain27)
+
 ## Credits
 
 Forked from [Net Speed Simplified](https://github.com/prateekmedia/netspeedsimplified) by prateekmedia
