@@ -3,10 +3,9 @@ set -e
 set -x
 
 # Updated variables
-EXT_UUID="nettotalssimplified@avrain27"  # Match your metadata.json UUID
+EXT_UUID="nettotalssimplified@avrain27"  
 EXT_HOME=~/.local/share/gnome-shell/extensions/${EXT_UUID}
-PROJECT_HOME="https://raw.githubusercontent.com/avrain27/nettotalssimplified/main"  # Your repo
-
+PROJECT_HOME="https://raw.githubusercontent.com/avrain27/nettotalssimplified/main" 
 # Remove old files (if any)
 rm -rf "${EXT_HOME}"
 
@@ -21,7 +20,7 @@ files=(
   "prefs.js"
   "stylesheet.css"
   "schemas/gschemas.compiled"
-  "schemas/org.gnome.shell.extensions.nettotalssimplified.gschema.xml"  # Updated schema name
+  "schemas/org.gnome.shell.extensions.nettotalssimplified.gschema.xml" 
 )
 
 # Download files with error handling
