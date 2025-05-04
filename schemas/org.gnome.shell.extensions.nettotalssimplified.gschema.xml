@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="nettotalssimplified@avrain27">
+  <schema path="/org/gnome/shell/extensions/nettotalssimplified/" id="org.gnome.shell.extensions.nettotalssimplified">
+      <!-- Basic Settings -->
+      <key name="refreshtime" type="d">
+        <range min="0.5" max="10.0" />
+        <default>2.0</default>
+        <summary>Refresh interval</summary>
+        <description>How often to update the display (in seconds)</description>
+      </key>
+      
+      <key name="fontmode" type="i">
+        <range min="0" max="4" />
+        <default>0</default>
+        <summary>Font size</summary>
+        <description>Size of the displayed text (0=Default, 4=Large)</description>
+      </key>
+      
+      <key name="minwidth" type="d">
+        <range min="3.0" max="10.0" />
+        <default>3.0</default>
+        <summary>Minimum width</summary>
+        <description>Minimum width of the display in em units</description>
+      </key>
+      
+      <key name="textalign" type="i">
+        <range min="0" max="2" />
+        <default>1</default>
+        <summary>Text alignment</summary>
+        <description>0=Left, 1=Right, 2=Center</description>
+      </key>
+      
+      <!-- Appearance -->
+      <key name="customfont" type="s">
+        <default>""</default>
+        <summary>Custom font</summary>
+        <description>Custom font family to use</description>
+      </key>
+      
+      <key name="systemcolr" type="b">
+        <default>false</default>
+        <summary>Use system colors</summary>
+        <description>Match the system theme colors</description>
+      </key>
+      
+      <key name="tscolor" type="s">
+        <default>"rgba(255, 255, 255, 1)"</default>
+        <summary>Total color</summary>
+        <description>Color for the total network usage display</description>
+      </key>
+      
+      <!-- Functionality -->
+      <key name="lockmouse" type="b">
+        <default>false</default>
+        <summary>Lock reset function</summary>
+        <description>Prevent right-click from resetting the total count</description>
+      </key>
+      
+      <!-- <key name="restartextension" type="b">
+        <default>false</default>
+        <summary>Internal restart flag</summary>
+        <description>Used internally to trigger extension restart</description>
+      </key> -->
+  </schema>
+</schemalist>

@@ -2,32 +2,57 @@
 set -e
 set -x
 
-EXT_HOME=~/.local/share/gnome-shell/extensions/netspeedsimplified@prateekmedia.extension
-PROJECT_HOME=https://raw.githubusercontent.com/prateekmedia/netspeedsimplified/main
+# Updated variables
+EXT_UUID="nettotalssimplified@avrain27"  # Match your metadata.json UUID
+EXT_HOME=~/.local/share/gnome-shell/extensions/${EXT_UUID}
+PROJECT_HOME="https://raw.githubusercontent.com/avrain27/nettotalssimplified/main"  # Your repo
 
-#Remove Old files
-rm -rf ${EXT_HOME}
+# Remove old files (if any)
+rm -rf "${EXT_HOME}"
 
-#Create a directory structure
-mkdir -p ${EXT_HOME}
-mkdir -p ${EXT_HOME}/schemas
+# Create directory structure
+mkdir -p "${EXT_HOME}/schemas"
 
-#Copy required files
-curl ${PROJECT_HOME}/convenience.js -o ${EXT_HOME}/convenience.js
-curl ${PROJECT_HOME}/extension.js -o ${EXT_HOME}/extension.js
-curl ${PROJECT_HOME}/metadata.json -o ${EXT_HOME}/metadata.json
-curl ${PROJECT_HOME}/prefs.js -o ${EXT_HOME}/prefs.js
-curl ${PROJECT_HOME}/stylesheet.css -o ${EXT_HOME}/stylesheet.css
-curl ${PROJECT_HOME}/schemas/gschemas.compiled -o ${EXT_HOME}/schemas/gschemas.compiled
-curl ${PROJECT_HOME}/schemas/org.gnome.shell.extensions.netspeedsimplified.gschema.xml -o ${EXT_HOME}/schemas/org.gnome.shell.extensions.netspeedsimplified.gschema.xml
+# Array of required files
+files=(
+  "convenience.js"
+  "extension.js"
+  "metadata.json"
+  "prefs.js"
+  "stylesheet.css"
+  "schemas/gschemas.compiled"
+  "schemas/org.gnome.shell.extensions.nettotalssimplified.gschema.xml"  # Updated schema name
+)
 
-#Optional files
-curl ${PROJECT_HOME}/LICENSE -o ${EXT_HOME}/LICENSE
+# Download files with error handling
+for file in "${files[@]}"; do
+  if ! curl -f --silent --show-error "${PROJECT_HOME}/${file}" -o "${EXT_HOME}/${file}"; then
+    echo "Error downloading ${file}"
+    exit 1
+  fi
+done
 
-#Reloading shell; Sending SIGHUP signal to gnome-shell (equivalent to alt + f2 ; r ; enter)
-busctl --user call org.gnome.Shell /org/gnome/Shell org.gnome.Shell Eval s 'Meta.restart("Restarting…")'
+# Optional files (skip if fails)
+optional_files=("LICENSE" "README.md")
+for file in "${optional_files[@]}"; do
+  curl -f --silent --show-error "${PROJECT_HOME}/${file}" -o "${EXT_HOME}/${file}" || true
+done
 
-sleep 5
+# Compile schemas if gschema.xml exists
+if [ -f "${EXT_HOME}/schemas/org.gnome.shell.extensions.nettotalssimplified.gschema.xml" ]; then
+  glib-compile-schemas "${EXT_HOME}/schemas"
+fi
 
-#Enabling Gnome extension.
-gnome-extensions enable netspeedsimplified@prateekmedia.extension
+# Restart GNOME Shell (modern approach)
+if dbus-send --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval string:'Meta.restart("Restarting for NetTotalSimplified update")'; then
+  echo "GNOME Shell restart initiated"
+else
+  echo "Warning: Could not restart GNOME Shell automatically"
+  echo "Please manually restart with Alt+F2, then 'r' + Enter"
+fi
+
+# Enable extension
+sleep 3  # Give time for shell to restart
+gnome-extensions enable "${EXT_UUID}" || echo "Warning: Extension enable failed. Try manually via Extensions app."
+
+echo "Installation complete for ${EXT_UUID}"
