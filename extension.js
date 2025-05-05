@@ -239,6 +239,8 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         this.fetchSettings();
         this.createUI();
 
+        this.updateMouseHandler();
+
         this._settingsSignals = [
             this.settings.connect('changed', () => this.handleSettingsChange())
         ];
