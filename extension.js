@@ -14,7 +14,20 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         this.settings = null;
         this.timeout = null;
         this.lastCount = 0;
-        this.resetCount = 0;
+        // this.resetCount = 0;
+        // this.lastDownload = -1;
+        // this.lastUpload = -1;
+        // this.resetDownload = 0;
+        // this.resetUpload = 0;
+
+        this.totalDownload = 0;  // Cumulative download total
+        this.totalUpload = 0;    // Cumulative upload total
+        this.lastDownload = 0;   // Last raw download value
+        this.lastUpload = 0;     // Last raw upload value
+        this.resetDownload = 0;  // Reset offset for download
+        this.resetUpload = 0;    // Reset offset for upload
+        this.resetCount = 0;     // Combined reset offset
+
         this.currentSettings = null;
 
         this.tsLabel = null;
@@ -45,58 +58,58 @@ export default class NetTotalsSimplifiedExtension extends Extension {
             systemColr: this.settings.get_boolean('systemcolr'),
             tsColor: this.settings.get_string('tscolor'),
             fontmode: this.settings.get_int('fontmode'),
-            lockMouse: this.settings.get_boolean('lockmouse')
+            lockMouse: this.settings.get_boolean('lockmouse'),
+            dualmode: this.settings.get_boolean('dualmode'),
         };
     }
 
     updateStyles() {
-        if (!this.tsLabel || this.tsLabel.is_destroyed) {
-            return;
+        if (!this.tsLabel || this.tsLabel.is_destroyed) return;
+
+        let extraInfo = this.currentSettings.cusFont ? `font-family: ${this.currentSettings.cusFont}; ` : "";
+        let extraLabelInfo = `${extraInfo}min-width: ${this.currentSettings.minWidth}em; `;
+        extraLabelInfo += `text-align: ${["left", "right", "center"][this.currentSettings.textAlign]}; `;
+
+        // Add monospace font for dual mode to prevent width jumps
+        if (this.currentSettings.dualmode) {
+            extraLabelInfo += "font-feature-settings: 'tnum' 1; "; // Tabular numbers
         }
 
-        // Ensure label has been allocated before styling
-        if (!this.tsLabel.allocation) {
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => this.updateStyles());
-            return GLib.SOURCE_REMOVE;
-        }
-
-        try {
-            let extraInfo = this.currentSettings.cusFont ? `font-family: ${this.currentSettings.cusFont}; ` : "";
-            let extraLabelInfo = `${extraInfo}min-width: ${this.currentSettings.minWidth}em; `;
-            extraLabelInfo += `text-align: ${["left", "right", "center"][this.currentSettings.textAlign]}; `;
-
-            this.tsLabel.set_style(`${extraLabelInfo}${this.currentSettings.systemColr ? "" : `color: ${this.currentSettings.tsColor}`}`);
-            this.tsLabel.style_class = `forall size-${this.currentSettings.fontmode}`;
-        } catch (e) {
-            console.error('Error in updateStyles:', e);
-        }
+        this.tsLabel.set_style(`${extraLabelInfo}${this.currentSettings.systemColr ? "" : `color: ${this.currentSettings.tsColor}`}`);
+        this.tsLabel.style_class = `forall size-${this.currentSettings.fontmode}`;
     }
 
     updateMouseHandler() {
-        if (this.nsButton) {
-            if (this._buttonSignalId) {
-                this.nsButton.disconnect(this._buttonSignalId);
-                this._buttonSignalId = null;
-            }
-
-            if (!this.currentSettings.lockMouse) {
-                this._buttonSignalId = this.nsButton.connect(
-                    'button-press-event',
-                    (widget, event) => {
-                        if (event.get_button() === 3) { // Right click
-                            this.resetCount = this.lastCount;
-                            this.updateLabel(this.formatBytes(0));
+        if (this._buttonSignalId && this.nsButton) {
+            this.nsButton.disconnect(this._buttonSignalId);
+        }
+    
+        if (!this.currentSettings.lockMouse) {
+            this._buttonSignalId = this.nsButton.connect(
+                'button-press-event',
+                (widget, event) => {
+                    if (event.get_button() === 3) { // Right click
+                        if (this.currentSettings.dualmode) {
+                            this.resetDownload = this.totalDownload;
+                            this.resetUpload = this.totalUpload;
+                            this.updateLabel("▼ 0 B ▲ 0 B");
+                        } else {
+                            this.resetCount = this.totalDownload + this.totalUpload;
+                            this.updateLabel("0 B");
                         }
+                        // Force immediate update
+                        this.parseStat();
                     }
-                );
-            }
+                }
+            );
         }
     }
 
     updateLabel(text) {
         if (this.tsLabel && !this.tsLabel.is_destroyed) {
-            // Keep the sum symbol prefix while updating the value
-            this.tsLabel.set_text(`Σ ${text.trim()}`);
+            // Only add Σ prefix in single mode
+            const displayText = this.currentSettings.dualmode ? text : `Σ ${text.trim()}`;
+            this.tsLabel.set_text(displayText);
         }
     }
 
@@ -167,38 +180,72 @@ export default class NetTotalsSimplifiedExtension extends Extension {
             let input_file = Gio.file_new_for_path('/proc/net/dev');
             let [, contents] = input_file.load_contents(null);
             contents = new TextDecoder().decode(contents);
+    
+            let currentDownload = 0;
+            let currentUpload = 0;
             let lines = contents.split('\n');
     
-            let count = 0;
-            for (let i = 0; i < lines.length; i++) {
-                let line = lines[i].trim();
-                let fields = line.split(/\W+/);
-                if (fields.length <= 2) continue;
+            // Parse network interfaces
+            for (let line of lines) {
+                line = line.trim();
+                if (!line || line.startsWith('Inter-') || line.startsWith(' face')) continue;
     
-                if (fields[0] != "lo" &&
-                    !fields[0].match(/^ifb[0-9]+/) &&
-                    !fields[0].match(/^veth[0-9a-zA-Z]+/) &&
-                    !isNaN(parseInt(fields[1]))) {
-                    count += parseInt(fields[1]) + parseInt(fields[9]);
+                let fields = line.split(/\s+/).filter(f => f);
+                if (fields.length < 10) continue;
+    
+                let iface = fields[0].replace(':', '');
+                if (iface === "lo" || 
+                    iface.match(/^ifb[0-9]+/) || 
+                    iface.match(/^veth[0-9a-zA-Z]+/) ||
+                    iface.match(/^tun[0-9]+/)) {
+                    continue;
                 }
+    
+                // Get current stats (RX = download, TX = upload)
+                currentDownload += parseInt(fields[1]) || 0;
+                currentUpload += parseInt(fields[9]) || 0;
             }
     
-            if (this.lastCount === 0) this.lastCount = count;
-            let total = this.formatBytes(count - this.resetCount);
+            // Handle counter wrap-around (32-bit or 64-bit max)
+            const MAX_COUNTER = 4294967295; // 32-bit max
+            if (this.lastDownload > 0 && currentDownload < this.lastDownload) {
+                // Counter wrapped around
+                this.totalDownload += (MAX_COUNTER - this.lastDownload) + currentDownload;
+            } else {
+                this.totalDownload += Math.max(0, currentDownload - this.lastDownload);
+            }
     
-            // Update label with sum symbol
-            this.updateLabel(total);
-            this.lastCount = count;
+            if (this.lastUpload > 0 && currentUpload < this.lastUpload) {
+                // Counter wrapped around
+                this.totalUpload += (MAX_COUNTER - this.lastUpload) + currentUpload;
+            } else {
+                this.totalUpload += Math.max(0, currentUpload - this.lastUpload);
+            }
+    
+            // Update display
+            if (this.currentSettings.dualmode) {
+                const dl = this.formatBytes(this.totalDownload - this.resetDownload);
+                const ul = this.formatBytes(this.totalUpload - this.resetUpload);
+                this.updateLabel(`▼ ${dl} ▲ ${ul}`);
+            } else {
+                const total = this.formatBytes((this.totalDownload + this.totalUpload) - this.resetCount);
+                this.updateLabel(total);
+            }
+    
+            // Store current raw values
+            this.lastDownload = currentDownload;
+            this.lastUpload = currentUpload;
     
         } catch (e) {
-            console.error('Error in parseStat:', e);
-            return true;
+            logError(`Error reading network stats: ${e}`);
+            this.updateLabel(this.currentSettings.dualmode ? "▼ 0 B ▲ 0 B" : "0 B");
         }
         return true;
     }
 
     formatBytes(bytes) {
-        if (bytes === 0) return "0 B";
+        bytes = Number(bytes) || 0;  // Force number conversion
+        if (bytes <= 0) return "0 B";
         const units = ['B', 'KB', 'MB', 'GB', 'TB'];
         let unit = 0;
         while (bytes >= 1000 && unit < units.length - 1) {
@@ -237,6 +284,13 @@ export default class NetTotalsSimplifiedExtension extends Extension {
     enable() {
         this.settings = this.getSettings();
         this.fetchSettings();
+        // Reset all counters
+        this.lastDownload = 0;
+        this.lastUpload = 0;
+        this.resetDownload = 0;
+        this.resetUpload = 0;
+        this.lastCount = 0;
+        this.resetCount = 0;
         this.createUI();
 
         this.updateMouseHandler();

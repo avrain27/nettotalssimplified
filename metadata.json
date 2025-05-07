@@ -8,7 +8,7 @@
   "shell-version": ["48"],
   "url": "https://github.com/avrain27/nettotalssimplified",
   "uuid": "nettotalssimplified@avrain27",
-  "version": "48.0.1",
+  "version": "48.1.0",
   "settings-schema": "org.gnome.shell.extensions.nettotalssimplified",
   "prefs": "prefs.js"
 }

@@ -2,77 +2,89 @@
 
 ![Extension Icon](https://raw.githubusercontent.com/avrain27/nettotalssimplified/main/images/icon-full.png)
 
-A simplified network usage monitor showing only total data transfer (forked from Net Speed Simplified)
+A clean network usage monitor showing cumulative data transfer (forked from Net Speed Simplified)
 
 ## Features
 
-- Shows only total network usage (simplified interface)
-- Right-click to reset counter
-- Adjustable refresh rate (1-10 seconds)
-- Customizable appearance:
-  - Font size and family
-  - Text color
-  - Text alignment
-  - Minimum width
-- Settings apply immediately (no need to restart)
-- Lightweight and efficient
+- **Dual display modes**:
+  - Combined total (Σ) 
+  - Split upload/download (▼▲)
+- Right-click to reset counters
+- **Customizable display**:
+  - Adjustable refresh rate (0.5-10 seconds)
+  - Multiple font sizes (Default → Large)
+  - Custom font family support
+  - Text alignment (Left/Center/Right)
+  - Minimum width control
+  - Custom color or system theme matching
+- **Advanced options**:
+  - Lock reset function (disable right-click)
+  - Counter wrap-around protection
+- Lightweight and efficient (~1MB RAM)
 
 ## Installation
 
-### Manual Installation
+### From Extensions.gnome.org
+1. Visit [extensions.gnome.org](https://extensions.gnome.org)
+2. Search for "Net Totals Simplified"
+3. Click install
 
-1. Clone the repository:
+### Manual Installation
 ```bash
 git clone https://github.com/avrain27/nettotalssimplified.git
-```
-
-2. Copy to extensions folder:
-```bash
 mkdir -p ~/.local/share/gnome-shell/extensions/nettotalssimplified@avrain27
 cp -r nettotalssimplified/* ~/.local/share/gnome-shell/extensions/nettotalssimplified@avrain27/
-```
-
-3. Enable the extension:
-```bash
-gnome-extensions enable nettotalssimplified@avrain27
-```
-
-### Using GH CLI
-
-```bash
-gh repo clone avrain27/nettotalssimplified ~/.local/share/gnome-shell/extensions/nettotalssimplified@avrain27
 gnome-extensions enable nettotalssimplified@avrain27
 ```
 
 ## Usage
 
-- The extension shows total network usage in your top panel
-- Right-click to reset the counter
-- Configure options in GNOME Extensions app
+1. The extension appears in your top panel showing:
+   - `Σ 1.2 GB` (combined mode)
+   - `▼ 800 MB ▲ 400 MB` (split mode)
+2. **Right-click** to reset counters
+3. Configure options through GNOME Extensions app
+
+## Accessing Preferences
+Open preferences via:
+1. GNOME Extensions application
+2. Command line:
+```bash
+gnome-extensions prefs nettotalssimplified@avrain27
+```
 
 ## Compatibility
-
-- GNOME Shell 48
-- Linux systems with /proc/net/dev
+- GNOME Shell 48+
+- Linux systems with `/proc/net/dev`
+- Wayland and X11 supported
 
 ## Troubleshooting
-
-If changes don't appear immediately:
-1. Check logs:
+If the display stops updating:
 ```bash
-journalctl -f -o cat /usr/bin/gnome-shell
-```
-2. Restart GNOME Shell (Alt+F2, then type 'r')
+# Check logs
+journalctl -f -o cat /usr/bin/gnome-shell | grep "NetTotals"
 
-## Support This Project
-If you find this extension useful, consider supporting development:
-- [Patreon](https://patreon.com/avrain27)
-- [PayPal](https://paypal.me/avrain27)
+# Reset settings
+dconf reset -f /org/gnome/shell/extensions/nettotalssimplified/
+
+# Restart GNOME Shell (Alt+F2 → 'r')
+```
+
+## 💖 Support This Project
+Enjoying this extension? Help support its development:
+- [Patreon](https://patreon.com/avrain27) (Recurring support, get perks!)
+- [PayPal](https://paypal.me/avrain27) (One-time donations)
+- **Star the repo** ⭐ (Helps visibility!)
+
+## Changelog
+### v48.1.0
+- Added dual upload/download display mode
+- Improved counter accuracy
+- Fixed right-click reset behavior
+- Added system theme color matching
 
 ## Credits
-
 Forked from [Net Speed Simplified](https://github.com/prateekmedia/netspeedsimplified) by prateekmedia
 
 ## License
-
 GNU GPL v3

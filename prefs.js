@@ -37,6 +37,7 @@ export default class NetTotalsSimplifiedPreferences extends ExtensionPreferences
                 ['boolean', 'systemcolr'],
                 ['string', 'tscolor'],
                 ['boolean', 'lockmouse'],
+                ['boolean', 'dualmode'],
             ].forEach(([type, key]) => {
                 const defaultValue = settings.get_default_value(key).unpack();
                 settings[`set_${type}`](key, defaultValue);
@@ -54,6 +55,14 @@ export default class NetTotalsSimplifiedPreferences extends ExtensionPreferences
         this._addToggle(vbox, settings, currentSettings, 'systemcolr', 'Use System Colors', 'Match the system theme colors');
         this._addColor(vbox, settings, currentSettings, 'tscolor', 'Total Color', 'Color for the total network usage display');
         this._addToggle(vbox, settings, currentSettings, 'lockmouse', 'Lock Reset Function', 'Prevent right-click from resetting the total count');
+        this._addToggle(
+            vbox, 
+            settings, 
+            currentSettings, 
+            'dualmode', 
+            'Show Upload/Download Separately', 
+            'Display two totals (upload + download) instead of one combined total'
+        );
 
         const scrolled = new Gtk.ScrolledWindow();
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
@@ -72,6 +81,7 @@ export default class NetTotalsSimplifiedPreferences extends ExtensionPreferences
             systemcolr: settings.get_boolean('systemcolr'),
             tscolor: settings.get_string('tscolor'),
             lockmouse: settings.get_boolean('lockmouse'),
+            dualmode: settings.get_boolean('dualmode'),
         };
     }
 
