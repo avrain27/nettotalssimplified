@@ -13,6 +13,9 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         super(metadata);
         this.settings = null;
         this.timeout = null;
+        this._styleTimeout = null;
+        this._allocationTimeout = null;
+        
         this.totalDownload = 0;
         this.totalUpload = 0;
         this.lastDownload = 0;
@@ -20,6 +23,7 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         this.resetDownload = 0;
         this.resetUpload = 0;
         this.resetCount = 0;
+        
         this.currentSettings = null;
         this.tsLabel = null;
         this.nsButton = null;
@@ -27,11 +31,14 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         this._settingsSignals = [];
     }
 
-    _removeTimeout() {
-        if (this.timeout) {
-            GLib.source_remove(this.timeout);
-            this.timeout = null;
-        }
+    _removeAllTimeouts() {
+        [this.timeout, this._styleTimeout, this._allocationTimeout].forEach(id => {
+            if (id) {
+                GLib.source_remove(id);
+                log(`Removed timeout ${id}`);
+            }
+        });
+        this.timeout = this._styleTimeout = this._allocationTimeout = null;
     }
 
     safeDestroy(obj) {
@@ -77,6 +84,7 @@ export default class NetTotalsSimplifiedExtension extends Extension {
     updateMouseHandler() {
         if (this._buttonSignalId && this.nsButton) {
             this.nsButton.disconnect(this._buttonSignalId);
+            this._buttonSignalId = null;
         }
     
         if (!this.currentSettings.lockMouse && this.nsButton) {
@@ -123,14 +131,15 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         this.nsButton.add_child(this.tsLabel);
         Main.panel.addToStatusArea(ButtonName, this.nsButton, 0, "right");
     
-        GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-            if (!this.tsLabel || !this.tsLabel.allocation) {
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => this.updateStyles());
-            } else {
+        if (!this.tsLabel.allocation) {
+            this._styleTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+                this._styleTimeout = null;
                 this.updateStyles();
-            }
-            return GLib.SOURCE_REMOVE;
-        });
+                return GLib.SOURCE_REMOVE;
+            });
+        } else {
+            this.updateStyles();
+        }
     }
 
     destroyUI() {
@@ -226,7 +235,7 @@ export default class NetTotalsSimplifiedExtension extends Extension {
 
     handleSettingsChange() {
         this.fetchSettings();
-        this._removeTimeout();
+        this._removeAllTimeouts();
         
         this.timeout = GLib.timeout_add_seconds(
             GLib.PRIORITY_DEFAULT,
@@ -234,21 +243,22 @@ export default class NetTotalsSimplifiedExtension extends Extension {
             () => this.parseStat()
         );
 
-        GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-            if (!this.tsLabel || !this.tsLabel.allocation) {
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => this.updateStyles());
-            } else {
+        if (!this.tsLabel || !this.tsLabel.allocation) {
+            this._allocationTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+                this._allocationTimeout = null;
                 this.updateStyles();
-            }
-            return GLib.SOURCE_REMOVE;
-        });
+                return GLib.SOURCE_REMOVE;
+            });
+        } else {
+            this.updateStyles();
+        }
 
         this.updateMouseHandler();
         this.parseStat();
     }
 
     enable() {
-        this._removeTimeout();
+        this._removeAllTimeouts();
         this.settings = this.getSettings();
         this.fetchSettings();
         
@@ -275,6 +285,8 @@ export default class NetTotalsSimplifiedExtension extends Extension {
     }
 
     disable() {
+        this._removeAllTimeouts();
+        
         this._settingsSignals.forEach(id => {
             try {
                 if (this.settings) {
@@ -286,7 +298,6 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         });
         this._settingsSignals = [];
         
-        this._removeTimeout();
         this.destroyUI();
         
         this.settings = null;

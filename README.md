@@ -75,6 +75,12 @@ Enjoying this extension? Help support its development:
 - **Star the repo** ⭐ (Helps visibility!)
 
 ## Changelog
+
+### v48.1.1
+- **Fixed**: Complete timeout management overhaul
+- Removed unnecessary files
+- Cleaned up metadata.json
+
 ### v48.1.0
 - Added dual upload/download display mode
 - Improved counter accuracy
