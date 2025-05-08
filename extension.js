@@ -13,29 +13,25 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         super(metadata);
         this.settings = null;
         this.timeout = null;
-        this.lastCount = 0;
-        // this.resetCount = 0;
-        // this.lastDownload = -1;
-        // this.lastUpload = -1;
-        // this.resetDownload = 0;
-        // this.resetUpload = 0;
-
-        this.totalDownload = 0;  // Cumulative download total
-        this.totalUpload = 0;    // Cumulative upload total
-        this.lastDownload = 0;   // Last raw download value
-        this.lastUpload = 0;     // Last raw upload value
-        this.resetDownload = 0;  // Reset offset for download
-        this.resetUpload = 0;    // Reset offset for upload
-        this.resetCount = 0;     // Combined reset offset
-
+        this.totalDownload = 0;
+        this.totalUpload = 0;
+        this.lastDownload = 0;
+        this.lastUpload = 0;
+        this.resetDownload = 0;
+        this.resetUpload = 0;
+        this.resetCount = 0;
         this.currentSettings = null;
-
         this.tsLabel = null;
         this.nsButton = null;
-        this.nsActor = null;
-
         this._buttonSignalId = null;
         this._settingsSignals = [];
+    }
+
+    _removeTimeout() {
+        if (this.timeout) {
+            GLib.source_remove(this.timeout);
+            this.timeout = null;
+        }
     }
 
     safeDestroy(obj) {
@@ -70,9 +66,8 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         let extraLabelInfo = `${extraInfo}min-width: ${this.currentSettings.minWidth}em; `;
         extraLabelInfo += `text-align: ${["left", "right", "center"][this.currentSettings.textAlign]}; `;
 
-        // Add monospace font for dual mode to prevent width jumps
         if (this.currentSettings.dualmode) {
-            extraLabelInfo += "font-feature-settings: 'tnum' 1; "; // Tabular numbers
+            extraLabelInfo += "font-feature-settings: 'tnum' 1; ";
         }
 
         this.tsLabel.set_style(`${extraLabelInfo}${this.currentSettings.systemColr ? "" : `color: ${this.currentSettings.tsColor}`}`);
@@ -84,11 +79,11 @@ export default class NetTotalsSimplifiedExtension extends Extension {
             this.nsButton.disconnect(this._buttonSignalId);
         }
     
-        if (!this.currentSettings.lockMouse) {
+        if (!this.currentSettings.lockMouse && this.nsButton) {
             this._buttonSignalId = this.nsButton.connect(
                 'button-press-event',
                 (widget, event) => {
-                    if (event.get_button() === 3) { // Right click
+                    if (event.get_button() === 3) {
                         if (this.currentSettings.dualmode) {
                             this.resetDownload = this.totalDownload;
                             this.resetUpload = this.totalUpload;
@@ -97,7 +92,6 @@ export default class NetTotalsSimplifiedExtension extends Extension {
                             this.resetCount = this.totalDownload + this.totalUpload;
                             this.updateLabel("0 B");
                         }
-                        // Force immediate update
                         this.parseStat();
                     }
                 }
@@ -107,7 +101,6 @@ export default class NetTotalsSimplifiedExtension extends Extension {
 
     updateLabel(text) {
         if (this.tsLabel && !this.tsLabel.is_destroyed) {
-            // Only add Σ prefix in single mode
             const displayText = this.currentSettings.dualmode ? text : `Σ ${text.trim()}`;
             this.tsLabel.set_text(displayText);
         }
@@ -120,9 +113,8 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         this.nsButton.reactive = true;
         this.nsButton.can_focus = false;
     
-        // Create label with sum symbol prefix
         this.tsLabel = new St.Label({
-            text: 'Σ --',  // Initial text with sum symbol
+            text: 'Σ --',
             y_align: Clutter.ActorAlign.CENTER,
             x_expand: true,
             y_expand: false
@@ -131,7 +123,6 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         this.nsButton.add_child(this.tsLabel);
         Main.panel.addToStatusArea(ButtonName, this.nsButton, 0, "right");
     
-        // Delay styling until allocation is ready
         GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
             if (!this.tsLabel || !this.tsLabel.allocation) {
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => this.updateStyles());
@@ -143,36 +134,21 @@ export default class NetTotalsSimplifiedExtension extends Extension {
     }
 
     destroyUI() {
-        // Disconnect signals first
         if (this._buttonSignalId && this.nsButton) {
             this.nsButton.disconnect(this._buttonSignalId);
             this._buttonSignalId = null;
         }
     
-        // Remove from panel status area if it exists
         if (Main.panel.statusArea[ButtonName]) {
             try {
                 Main.panel.statusArea[ButtonName].remove_child(this.nsButton);
             } catch (e) {
-                console.debug('Error removing button from panel:', e);
+                console.debug('Error removing button:', e);
             }
         }
     
-        // Destroy children first
         this.tsLabel = this.safeDestroy(this.tsLabel);
-    
-        // Then destroy the button
-        if (this.nsButton) {
-            try {
-                // Ensure we're not trying to remove the button from itself
-                if (!this.nsButton.is_destroyed) {
-                    this.nsButton.destroy();
-                }
-            } catch (e) {
-                console.debug('Error destroying button:', e);
-            }
-            this.nsButton = null;
-        }
+        this.nsButton = this.safeDestroy(this.nsButton);
     }
 
     parseStat() {
@@ -185,7 +161,6 @@ export default class NetTotalsSimplifiedExtension extends Extension {
             let currentUpload = 0;
             let lines = contents.split('\n');
     
-            // Parse network interfaces
             for (let line of lines) {
                 line = line.trim();
                 if (!line || line.startsWith('Inter-') || line.startsWith(' face')) continue;
@@ -201,28 +176,23 @@ export default class NetTotalsSimplifiedExtension extends Extension {
                     continue;
                 }
     
-                // Get current stats (RX = download, TX = upload)
                 currentDownload += parseInt(fields[1]) || 0;
                 currentUpload += parseInt(fields[9]) || 0;
             }
     
-            // Handle counter wrap-around (32-bit or 64-bit max)
-            const MAX_COUNTER = 4294967295; // 32-bit max
+            const MAX_COUNTER = 4294967295;
             if (this.lastDownload > 0 && currentDownload < this.lastDownload) {
-                // Counter wrapped around
                 this.totalDownload += (MAX_COUNTER - this.lastDownload) + currentDownload;
             } else {
                 this.totalDownload += Math.max(0, currentDownload - this.lastDownload);
             }
     
             if (this.lastUpload > 0 && currentUpload < this.lastUpload) {
-                // Counter wrapped around
                 this.totalUpload += (MAX_COUNTER - this.lastUpload) + currentUpload;
             } else {
                 this.totalUpload += Math.max(0, currentUpload - this.lastUpload);
             }
     
-            // Update display
             if (this.currentSettings.dualmode) {
                 const dl = this.formatBytes(this.totalDownload - this.resetDownload);
                 const ul = this.formatBytes(this.totalUpload - this.resetUpload);
@@ -232,7 +202,6 @@ export default class NetTotalsSimplifiedExtension extends Extension {
                 this.updateLabel(total);
             }
     
-            // Store current raw values
             this.lastDownload = currentDownload;
             this.lastUpload = currentUpload;
     
@@ -244,7 +213,7 @@ export default class NetTotalsSimplifiedExtension extends Extension {
     }
 
     formatBytes(bytes) {
-        bytes = Number(bytes) || 0;  // Force number conversion
+        bytes = Number(bytes) || 0;
         if (bytes <= 0) return "0 B";
         const units = ['B', 'KB', 'MB', 'GB', 'TB'];
         let unit = 0;
@@ -257,17 +226,14 @@ export default class NetTotalsSimplifiedExtension extends Extension {
 
     handleSettingsChange() {
         this.fetchSettings();
+        this._removeTimeout();
+        
+        this.timeout = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT,
+            this.currentSettings.refreshTime,
+            () => this.parseStat()
+        );
 
-        if (this.timeout) {
-            GLib.source_remove(this.timeout);
-            this.timeout = GLib.timeout_add_seconds(
-                GLib.PRIORITY_DEFAULT,
-                this.currentSettings.refreshTime,
-                () => this.parseStat()
-            );
-        }
-
-        // Delay styling after settings change as well
         GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
             if (!this.tsLabel || !this.tsLabel.allocation) {
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => this.updateStyles());
@@ -282,17 +248,19 @@ export default class NetTotalsSimplifiedExtension extends Extension {
     }
 
     enable() {
+        this._removeTimeout();
         this.settings = this.getSettings();
         this.fetchSettings();
-        // Reset all counters
+        
+        this.totalDownload = 0;
+        this.totalUpload = 0;
         this.lastDownload = 0;
         this.lastUpload = 0;
         this.resetDownload = 0;
         this.resetUpload = 0;
-        this.lastCount = 0;
         this.resetCount = 0;
-        this.createUI();
 
+        this.createUI();
         this.updateMouseHandler();
 
         this._settingsSignals = [
@@ -307,28 +275,20 @@ export default class NetTotalsSimplifiedExtension extends Extension {
     }
 
     disable() {
-        // Disconnect settings signals
         this._settingsSignals.forEach(id => {
             try {
                 if (this.settings) {
                     this.settings.disconnect(id);
                 }
             } catch (e) {
-                console.debug('Error disconnecting setting signal:', e);
+                console.debug('Error disconnecting signal:', e);
             }
         });
         this._settingsSignals = [];
-    
-        // Remove timeout
-        if (this.timeout) {
-            GLib.source_remove(this.timeout);
-            this.timeout = null;
-        }
-    
-        // Clean up UI
+        
+        this._removeTimeout();
         this.destroyUI();
-    
-        // Clear references
+        
         this.settings = null;
         this.currentSettings = null;
     }

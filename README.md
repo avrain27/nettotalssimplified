@@ -1,7 +1,5 @@
 # Net Totals Simplified
 
-![Extension Icon](https://raw.githubusercontent.com/avrain27/nettotalssimplified/main/images/icon-full.png)
-
 A clean network usage monitor showing cumulative data transfer (forked from Net Speed Simplified)
 
 ## Features
