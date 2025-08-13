@@ -4,9 +4,10 @@ A clean network usage monitor showing cumulative data transfer (forked from Net 
 
 ## Features
 
-- **Dual display modes**:
-  - Combined total (Σ) 
+- **Three display modes**:
+  - Combined total (Σ)
   - Split upload/download (▼▲)
+  - Quota mode (remaining data based on user-defined limit)
 - Right-click to reset counters
 - **Customizable display**:
   - Adjustable refresh rate (0.5-10 seconds)
@@ -18,6 +19,7 @@ A clean network usage monitor showing cumulative data transfer (forked from Net 
 - **Advanced options**:
   - Lock reset function (disable right-click)
   - Counter wrap-around protection
+  - Quota input with Enter key support
 - Lightweight and efficient (~1MB RAM)
 
 ## Installation
@@ -40,8 +42,10 @@ gnome-extensions enable nettotalssimplified@avrain27
 1. The extension appears in your top panel showing:
    - `Σ 1.2 GB` (combined mode)
    - `▼ 800 MB ▲ 400 MB` (split mode)
+   - `1.2 GB left` (quota mode)
 2. **Right-click** to reset counters
-3. Configure options through GNOME Extensions app
+3. **Quota mode**: Set a data limit via the menu; supports input like 100MB, 1GB, etc.
+4. Configure options through GNOME Extensions app
 
 ## Accessing Preferences
 Open preferences via:
@@ -76,16 +80,23 @@ Enjoying this extension? Help support its development:
 
 ## Changelog
 
-### v48.1.1
+### v4
+- Added quota display mode
+
+### v3
 - **Fixed**: Complete timeout management overhaul
 - Removed unnecessary files
 - Cleaned up metadata.json
 
-### v48.1.0
+### v2
 - Added dual upload/download display mode
 - Improved counter accuracy
 - Fixed right-click reset behavior
 - Added system theme color matching
+
+### v1
+- Initial release based on Net Speed Simplified
+- Combined total mode with customizable display options
 
 ## Credits
 Forked from [Net Speed Simplified](https://github.com/prateekmedia/netspeedsimplified) by prateekmedia

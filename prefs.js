@@ -16,6 +16,7 @@ export default class NetTotalsSimplifiedPreferences extends ExtensionPreferences
             vexpand: true,
         });
 
+        // Section title
         vbox.append(new Gtk.Label({
             label: '<b>Total Network Usage Settings</b>',
             use_markup: true,
@@ -23,10 +24,8 @@ export default class NetTotalsSimplifiedPreferences extends ExtensionPreferences
             margin_top: 15,
         }));
 
-        const resetBtn = new Gtk.Button({ 
-            label: 'Restore Defaults', 
-            margin_bottom: 15 
-        });
+        // Restore defaults button
+        const resetBtn = new Gtk.Button({ label: 'Restore Defaults', margin_bottom: 15 });
         resetBtn.connect('clicked', () => {
             [
                 ['double', 'refreshtime'],
@@ -37,7 +36,9 @@ export default class NetTotalsSimplifiedPreferences extends ExtensionPreferences
                 ['boolean', 'systemcolr'],
                 ['string', 'tscolor'],
                 ['boolean', 'lockmouse'],
-                ['boolean', 'dualmode'],
+                ['int', 'displaymode'],
+                ['double', 'datacap'],
+                ['double', 'warnthreshold'],
             ].forEach(([type, key]) => {
                 const defaultValue = settings.get_default_value(key).unpack();
                 settings[`set_${type}`](key, defaultValue);
@@ -46,7 +47,7 @@ export default class NetTotalsSimplifiedPreferences extends ExtensionPreferences
         });
         vbox.append(resetBtn);
 
-        // Add all your preference widgets
+        // General settings
         this._addSpin(vbox, settings, currentSettings, 'refreshtime', 'Refresh Time (seconds)', 'How often to update the display', 1.0, 10.0, 0.1, 1);
         this._addCombo(vbox, settings, currentSettings, 'fontmode', 'Font Size', ['Default', 'Smallest', 'Smaller', 'Small', 'Large'], 'Size of the displayed text');
         this._addSpin(vbox, settings, currentSettings, 'minwidth', 'Minimum Width (em)', 'Minimum width of the display', 3.0, 10.0, 0.5, 1);
@@ -55,15 +56,15 @@ export default class NetTotalsSimplifiedPreferences extends ExtensionPreferences
         this._addToggle(vbox, settings, currentSettings, 'systemcolr', 'Use System Colors', 'Match the system theme colors');
         this._addColor(vbox, settings, currentSettings, 'tscolor', 'Total Color', 'Color for the total network usage display');
         this._addToggle(vbox, settings, currentSettings, 'lockmouse', 'Lock Reset Function', 'Prevent right-click from resetting the total count');
-        this._addToggle(
-            vbox, 
-            settings, 
-            currentSettings, 
-            'dualmode', 
-            'Show Upload/Download Separately', 
-            'Display two totals (upload + download) instead of one combined total'
-        );
 
+        // Display mode dropdown
+        this._addCombo(vbox, settings, currentSettings, 'displaymode', 'Display Mode', ['Combined Total', 'Upload/Download', 'Remaining Bandwidth'], 'Choose how network usage is shown');
+
+        // Remaining quota mode options
+        this._addSpin(vbox, settings, currentSettings, 'datacap', 'Data Cap (MB)', 'Monthly data limit in megabytes', 10, 100000, 10, 0);
+        this._addSpin(vbox, settings, currentSettings, 'warnthreshold', 'Warning Threshold (%)', 'Warn when remaining falls below this percent', 1, 100, 1, 0);
+
+        // Scrolling container
         const scrolled = new Gtk.ScrolledWindow();
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
         scrolled.set_child(vbox);
@@ -81,8 +82,15 @@ export default class NetTotalsSimplifiedPreferences extends ExtensionPreferences
             systemcolr: settings.get_boolean('systemcolr'),
             tscolor: settings.get_string('tscolor'),
             lockmouse: settings.get_boolean('lockmouse'),
-            dualmode: settings.get_boolean('dualmode'),
+            displaymode: settings.get_int('displaymode'),
+            datacap: settings.get_double('datacap'),
+            warnthreshold: settings.get_double('warnthreshold'),
         };
+    }
+
+    _markupLabel(settings, key, text) {
+        const isDefault = settings.get_default_value(key).equal(settings.get_value(key));
+        return isDefault ? text : `<i>${text}</i>`;
     }
 
     _addSpin(parent, settings, current, key, labelText, tooltip, lower, upper, step, digits) {
@@ -197,10 +205,5 @@ export default class NetTotalsSimplifiedPreferences extends ExtensionPreferences
         box.append(label);
         box.append(entry);
         parent.append(box);
-    }
-
-    _markupLabel(settings, key, text) {
-        const isDefault = settings.get_default_value(key).equal(settings.get_value(key));
-        return isDefault ? text : `<i>${text}</i>`;
     }
 }
