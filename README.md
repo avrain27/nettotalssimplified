@@ -1,6 +1,6 @@
 # Net Totals Simplified
 
-A clean network usage monitor showing cumulative data transfer (forked from Net Speed Simplified)
+A clean network usage monitor showing cumulative data transfer.
 
 ## Features
 
@@ -56,7 +56,7 @@ gnome-extensions prefs nettotalssimplified@avrain27
 ```
 
 ## Compatibility
-- GNOME Shell 48+
+- GNOME Shell 48, 49
 - Linux systems with `/proc/net/dev`
 - Wayland and X11 supported
 
@@ -64,12 +64,12 @@ gnome-extensions prefs nettotalssimplified@avrain27
 If the display stops updating:
 ```bash
 # Check logs
-journalctl -f -o cat /usr/bin/gnome-shell | grep "NetTotals"
+journalctl -f -o cat /usr/bin/gnome-shell | grep "NetTotalsSimplified"
 
 # Reset settings
 dconf reset -f /org/gnome/shell/extensions/nettotalssimplified/
 
-# Restart GNOME Shell (Alt+F2 → 'r')
+# Restart GNOME Shell (Alt+F2 → 'r' on X11, or log out/in on Wayland)
 ```
 
 ## 💖 Support This Project
@@ -79,6 +79,9 @@ Enjoying this extension? Help support its development:
 - **Star the repo** ⭐ (Helps visibility!)
 
 ## Changelog
+### v5
+- Added GNOME Shell 49 compatibility
+- Updated log prefix to [NetTotalsSimplified] for consistency
 
 ### v4
 - Added quota display mode
@@ -99,7 +102,7 @@ Enjoying this extension? Help support its development:
 - Combined total mode with customizable display options
 
 ## Credits
-Forked from [Net Speed Simplified](https://github.com/prateekmedia/netspeedsimplified) by prateekmedia
+Inspired by [Net Speed Simplified](https://github.com/prateekmedia/netspeedsimplified) by prateekmedia
 
 ## License
 GNU GPL v3

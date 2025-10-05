@@ -266,7 +266,7 @@ export default class NetTotalsSimplifiedExtension extends Extension {
         quotaBox.add_child(quotaButton);
 
         const quotaItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: true });
-        quotaItem.add_child(quotaBox); // Use add_child instead of actor.add_child for GNOME 48
+        quotaItem.add_child(quotaBox);
         menu.addMenuItem(quotaItem);
 
         // Function to handle setting the quota (reused for button and Enter key)
@@ -342,12 +342,6 @@ export default class NetTotalsSimplifiedExtension extends Extension {
             this.nsButton.disconnect(this._buttonSignalId);
             this._buttonSignalId = null;
         }
-        
-        // This is no longer needed since PanelMenu.Button handles its own menu lifecycle.
-        // if (this.menu) {
-        //     this.menu.destroy();
-        //     this.menu = null;
-        // }
 
         if (this.nsButton) {
             if (Main.panel.statusArea[ButtonName]) {
@@ -440,7 +434,7 @@ export default class NetTotalsSimplifiedExtension extends Extension {
 
     notifyUsageLow(remaining) {
         Main.notify(
-            'Net Totals',
+            'Net Totals Simplified',
             `Remaining quota: ${this.formatBytes(Math.max(remaining, 0))}`
         );
     }
